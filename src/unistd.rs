@@ -381,11 +381,13 @@ pub fn chown<P: ?Sized + NixPath>(path: &P, owner: Option<uid_t>, group: Option<
     Errno::result(res).map(drop)
 }
 
-fn to_exec_array(args: &[CString]) -> Vec<*const c_char> {
+fn to_exec_array<'a, I>(args: I) -> Vec<*const c_char>
+    where I: IntoIterator<Item=&'a CString>
+{
     use std::ptr;
     use libc::c_char;
 
-    let mut args_p: Vec<*const c_char> = args.iter().map(|s| s.as_ptr()).collect();
+    let mut args_p: Vec<*const c_char> = args.into_iter().map(|s| s.as_ptr()).collect();
     args_p.push(ptr::null());
     args_p
 }
@@ -397,7 +399,9 @@ fn to_exec_array(args: &[CString]) -> Vec<*const c_char> {
 /// performs the same action but does not allow for customization of the
 /// environment for the new process.
 #[inline]
-pub fn execv(path: &CString, argv: &[CString]) -> Result<Void> {
+pub fn execv<'a, I>(path: &CString, argv: I) -> Result<Void>
+    where I: IntoIterator<Item=&'a CString>
+{
     let args_p = to_exec_array(argv);
 
     unsafe {
@@ -426,7 +430,9 @@ pub fn execv(path: &CString, argv: &[CString]) -> Result<Void> {
 /// in the `args` list is an argument to the new process. Each element in the
 /// `env` list should be a string in the form "key=value".
 #[inline]
-pub fn execve(path: &CString, args: &[CString], env: &[CString]) -> Result<Void> {
+pub fn execve<'a, 'b, I, J>(path: &CString, args: I, env: J) -> Result<Void>
+    where I: IntoIterator<Item=&'a CString>, J: IntoIterator<Item=&'b CString>
+{
     let args_p = to_exec_array(args);
     let env_p = to_exec_array(env);
 
@@ -447,7 +453,9 @@ pub fn execve(path: &CString, args: &[CString], env: &[CString]) -> Result<Void>
 /// would not work if "bash" was specified for the path argument, but `execvp`
 /// would assuming that a bash executable was on the system `PATH`.
 #[inline]
-pub fn execvp(filename: &CString, args: &[CString]) -> Result<Void> {
+pub fn execvp<'a, I>(filename: &CString, args: I) -> Result<Void>
+    where I: IntoIterator<Item=&'a CString>
+{
     let args_p = to_exec_array(args);
 
     unsafe {
@@ -875,7 +883,9 @@ mod linux {
 
     #[inline]
     #[cfg(feature = "execvpe")]
-    pub fn execvpe(filename: &CString, args: &[CString], env: &[CString]) -> Result<()> {
+    pub fn execvpe<'a, 'b, I, J>(filename: &CString, args: I, env: J) -> Result<()>
+        where I: IntoIterator<Item=&'a CString>, J: IntoIterator<Item=&'b CString>
+    {
         use std::ptr;
         use libc::c_char;
 
